@@ -13,6 +13,7 @@ segment of code in pyquaticus/rl_test/train_3v3.py and pyquaticus/rl_test/train_
 4-cores, please try to run and optimize the configuration. Current best per loop (out of 8000) time is ~16 secs for train_3v3.py. Even a few seconds saved can
 reduce AI training time by hours.
 
+```
 PPOConfig()
     .api_stack(enable_rl_module_and_learner=False, enable_env_runner_and_connector_v2=False)  # Disable alpha API stack (legacy RLlib),  #Not using the Alpha Rllib (api_stack False) 
     .environment(env='pyquaticus') # Environment setup
@@ -33,3 +34,5 @@ PPOConfig()
     "grad_clip": 0.5,
     "vf_clip_param": 10.0,
 })
+```
+

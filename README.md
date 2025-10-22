@@ -1,12 +1,11 @@
-#Main Development Space for NRL - MCTF
-
+# Main Development Space for NRL - MCTF
 This the main repository where the bulk of team MCTF 3 will develop their AI training agents and testing.
 
 Competition 2025 Website: https://mctf2025.com/installation
 
 Original Pyquaticus Repository: https://github.com/mit-ll-trusted-autonomy/pyquaticus/tree/main
 
-##Performance
+# Performance
 
 This project utilizes RLib extensively. Performance is greatly improved through the use of a GPU. However, right after the GPU, the # of CPU cores is the
 next largest bottleneck. The current configuration for testing AI agent training is optimized for a GTX 1070 GPU and a 4-core Intel CPU. Change the following

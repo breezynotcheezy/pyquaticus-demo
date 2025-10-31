@@ -36,3 +36,12 @@ PPOConfig()
 })
 ```
 
+# Running Sandbox Environment
+
+This commands runs an 3v3 team agent GUI using established AI agent policies. deploy_3v3.py can be found in the /rl_test folder. Adjust or create
+new training policies as necessary.
+```
+python deploy_3v3.py ./ray_test/iter_0/policies/agent-0-policy ./ray_test/iter_0/policies/agent-1-policy ./ray_test/iter_0/policies/agent-2-policy
+```
+
+

@@ -1,47 +1,96 @@
-# Main Development Space for NRL - MCTF
-This the main repository where the bulk of team MCTF 3 will develop their AI training agents and testing.
+# Pyquaticus
+This is a [PettingZoo](https://pettingzoo.farama.org/) environment for maritime Capture the Flag with uncrewed surface vehicles (USVs).
 
-Competition 2025 Website: https://mctf2025.com/installation
+## Motivation
+This PettingZoo is a _lightweight_ environment for developing algorithms to play multi-agent Capture-the-Flag with surface vehicle dynamics.
 
-Original Pyquaticus Repository: https://github.com/mit-ll-trusted-autonomy/pyquaticus/tree/main
+The primary motivation is to enable quick iteration of algorithm development or training loops for Reinforcement Learning (RL). The implementation is pure-Python and supports faster-than-real-time execution and can easily be parallelized on a cluster. This is critical for scaling up learning-based techniques before transitioning to higher-fidelity simulation and/or USV hardware.
 
-# Performance
+The default vehicle dynamics are based on the [MOOS-IvP](https://oceanai.mit.edu/moos-ivp/pmwiki/pmwiki.php?n=Main.HomePage) `uSimMarine` dynamics [here](https://oceanai.mit.edu/ivpman/pmwiki/pmwiki.php?n=IvPTools.USimMarine). MOOS-IvP stands for Mission Oriented Operating Suite with Interval Programming. The IvP addition to the core MOOS software package is developed and maintained by the Laboratory for Autonomous Marine Sensing Systems at MIT. MOOS-IvP is a popular choice for maritime autonomy filling a similar role to the Robot Operating System (ROS) used in other robotics fields.
 
-This project utilizes RLib extensively. Performance is greatly improved through the use of a GPU. However, right after the GPU, the # of CPU cores is the
-next largest bottleneck. The current configuration for testing AI agent training is optimized for a GTX 1070 GPU and a 4-core Intel CPU. Change the following
-segment of code in pyquaticus/rl_test/train_3v3.py and pyquaticus/rl_test/train_2v2.py. If you have a GPU with more than 2GB of VRAM and a CPU with more than
-4-cores, please try to run and optimize the configuration. Current best per loop (out of 8000) time is ~16 secs for train_3v3.py. Even a few seconds saved can
-reduce AI training time by hours.
+## Key Capabilities
+* Supports standard PettingZoo interface for multi-agent RL
+* Pure-Python implementation without many dependencies
+* Easy integration with standard learning frameworks
+* Implementation of MOOS-IvP vehicle dynamics such that algorithms and learning policies can easily be ported to MOOS-IvP and deployed on hardware
+* Baseline policies to train against
+* Parameterized number of agents
+* Configurable observation space
+* Decentralized and agent-relative observation space
+* Configurable reward function
+* Supports custom agent dynamics
+* Simulate real-world maritime scenarios of any aquatic region on earth with [OpenStreetMap](https://www.openstreetmap.org/)-based environments
+* Example integration with [RLLib](https://docs.ray.io/en/latest/rllib/index.html) for reinforcement learning
+* Easy deployment on MOOS-compatible robots  
+
+
+## Installation
+### Conda
+It is highly recommended to use a `conda` environment. Assuming you have [Anaconda](https://www.anaconda.com/) or [Miniconda](https://docs.conda.io/en/latest/miniconda.html) installed, run the following from the top-level of this repository:
 
 ```
-PPOConfig()
-    .api_stack(enable_rl_module_and_learner=False, enable_env_runner_and_connector_v2=False)  # Disable alpha API stack (legacy RLlib),  #Not using the Alpha Rllib (api_stack False) 
-    .environment(env='pyquaticus') # Environment setup
-    .env_runners(num_env_runners=4, num_cpus_per_env_runner=1) # Set runners (ideal: num_env_runners = #CPU cores) and resource allocation
-    .resources(num_gpus=NUM_GPUS) #Enable GPU usage
-    .framework("torch") # Ensure we use PyTorch backend (most common but TensorFlow works too)
-    #.learners(use_fp16=True) #NVIDIA GPU 1070 GTX Specific. Remove if needed.
-    #.reporting(min_sample_timesteps_per_iteration=2048) # Rollout / logging frequency
-)
-    ppo_config.update_from_dict({ #Optimized training parameters specific to GTX 1070. May need changing if not using same GPU. If unsure leave as-is.
-    "train_batch_size": 2048,
-    "sgd_minibatch_size": 256,
-    "num_sgd_iter": 8,
-    "lr": 3e-4,
-    "gamma": 0.99,
-    "lambda": 0.95,
-    "clip_param": 0.2,
-    "grad_clip": 0.5,
-    "vf_clip_param": 10.0,
-})
+# create a small virtual environment -- just enough to run the PettingZoo environment
+./setup-conda-env.sh light
 ```
 
-# Running Sandbox Environment
-
-This commands runs an 3v3 team agent GUI using established AI agent policies. deploy_3v3.py can be found in the /rl_test folder. Adjust or create
-new training policies as necessary.
 ```
-python deploy_3v3.py ./ray_test/iter_0/policies/agent-0-policy ./ray_test/iter_0/policies/agent-1-policy ./ray_test/iter_0/policies/agent-2-policy
+# or create the full virtual environment -- with RLLib and PyTorch
+./setup-conda-env.sh full
 ```
 
+You can then activate the environment with: `conda activate env-light/` or `conda activate env-full/`
+### Venv
+Create a virtual environment with Python 3.10
+
+Source the environment
+
+In the pyquaticus root directory, run either
+```
+pip install -e .
+```
+or
+```
+pip install -e .[torch,ray]
+```
+
+## Basic Tests
+
+* Random action: `python ./test/rand_env_test.py`
+* Control with arrow keys: `python ./test/arrowkeys_test.py`
+  * control agents with WASD and the arrow keys
+
+## Environment Visuals
+
+* Rendered with `pygame`
+* Blue vs Red 1v1 or multiagent teams
+* **Flag keepout zone:** circle (team's color) drawn around flag
+* **Flag pickup zone:** black circle drawn around flag
+* **Tagging cooldown**: receding black circle around agent
+* **Out-of-bounds**: yellow halo around agent (occurs if out-of-bounds)
+* **Drive-to-home**: green halo around agent (occurs if tagged)
+* **Lines between agents:**
+  * Drawn between agents of opposite teams
+  * **Green**: within `2*catch_radius`
+  * **Orange/Yellow**: within `1.5*catch_radius`
+  * **Red**: within `catch_radius`
+
+## Configurable Reward
+
+Pyquaticus comes with a simple sparse reward, but it can be extended with different reward structures. See [rewards.py](https://github.com/mit-ll-trusted-autonomy/pyquaticus/blob/main/pyquaticus/utils/rewards.py) for more information.
+
+## Docker
+
+Out-of-date, do not use. Coming soon!
+
+## Distribution and Disclaimer Statements
+
+DISTRIBUTION STATEMENT A. Approved for public release. Distribution is unlimited.
+
+This material is based upon work supported by the Under Secretary of Defense for Research and Engineering under Air Force Contract No. FA8702-15-D-0001. Any opinions, findings, conclusions or recommendations expressed in this material are those of the author(s) and do not necessarily reflect the views of the Under Secretary of Defense for Research and Engineering.
+
+© 2023 Massachusetts Institute of Technology.
+
+The software/firmware is provided to you on an As-Is basis
+
+Delivered to the U.S. Government with Unlimited Rights, as defined in DFARS Part 252.227-7013 or 7014 (Feb 2014). Notwithstanding any copyright notice, U.S. Government rights in this work are defined by DFARS 252.227-7013 or DFARS 252.227-7014 as detailed above. Use of this work other than as specifically authorized by the U.S. Government may violate any copyrights that exist in this work.
 

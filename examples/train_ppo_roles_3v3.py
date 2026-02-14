@@ -333,22 +333,15 @@ if __name__ == "__main__":
     test_env.close()
 
     # Initialize Ray with optimized settings
-    # Skip Ray initialization due to Windows compatibility issues
-    # Use local training instead
-    print("Skipping Ray initialization due to Windows compatibility issues")
+    # Completely bypass Ray for Windows compatibility
+    print("Bypassing Ray entirely for Windows compatibility")
     print("Using local training mode")
     
-    # Force local mode by setting environment variable
+    # Set environment variables to disable Ray
     os.environ["RAY_DISABLE_IMPORT_WARNING"] = "1"
+    os.environ["RAY_EXPERIMENTAL_NOSET_RAY_ADDRESS"] = "1"
     
-    try:
-        # Try minimal Ray init just for RLlib compatibility
-        if not ray.is_initialized():
-            ray.init(log_to_driver=False, ignore_reinit_error=True)
-            print("Ray initialized in minimal mode")
-    except Exception as e:
-        print(f"Ray initialization failed: {e}")
-        print("Continuing without Ray...")
+    # Don't initialize Ray at all - let RLlib handle it locally
 
     # Optimized PPO configuration for competitive performance
     ppo_config = (
@@ -358,9 +351,10 @@ if __name__ == "__main__":
         )
         .environment(env="pyquaticus_hierarchical", env_config=env_config)
         .env_runners(
-            num_env_runners=0,  # Use 0 for local training (no workers)
+            num_env_runners=0,  # Force local training (no workers)
             num_cpus_per_env_runner=1,
             num_envs_per_env_runner=1,
+            rollout_fragment_length=1000,  # Smaller fragments for local training
         )
         .resources(
             num_gpus=0,  # CPU training for stability
@@ -399,10 +393,18 @@ if __name__ == "__main__":
     # Build algorithm
     print("Building PPO algorithm...")
     try:
-        algo = ppo_config.build()
+        # Try the newer API first
+        try:
+            algo = ppo_config.build_algo()
+        except AttributeError:
+            # Fall back to the old API
+            algo = ppo_config.build()
         print("Algorithm built successfully")
     except Exception as e:
         print(f"Error building algorithm: {e}")
+        print("This is likely due to Ray Windows compatibility issues.")
+        print("Using the simplified training script instead...")
+        print("Run: python examples/train_ppo_roles_3v3_simple.py --iterations 8 --save-dir ./hierarchical_checkpoints")
         sys.exit(1)
 
     # Resume from checkpoint if provided

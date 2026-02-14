@@ -69,10 +69,21 @@ class PPOAgent:
         self.eps_clip = eps_clip
         self.memory = []
         
-    def select_action(self, state):
-        state = torch.FloatTensor(state)
+    def select_action(self, state, agent_id=None):
+        # Handle both single agent and multi-agent observations
+        if isinstance(state, dict):
+            # If it's a dict, extract the observation for this agent
+            if agent_id and agent_id in state:
+                obs_array = state[agent_id]
+            else:
+                # Fallback to first agent's observation
+                obs_array = list(state.values())[0]
+        else:
+            obs_array = state
+        
+        state_tensor = torch.FloatTensor(obs_array)
         with torch.no_grad():
-            action_probs = torch.softmax(self.policy(state), dim=-1)
+            action_probs = torch.softmax(self.policy(state_tensor), dim=-1)
         dist = Categorical(action_probs)
         action = dist.sample()
         return action.item(), dist.log_prob(action).item()
@@ -81,11 +92,40 @@ class PPOAgent:
         if len(self.memory) < 10:  # Need some experience to update
             return
             
-        # Convert memory to tensors
-        states = torch.FloatTensor([exp['state'] for exp in self.memory])
-        actions = torch.LongTensor([exp['action'] for exp in self.memory])
-        rewards = torch.FloatTensor([exp['reward'] for exp in self.memory])
-        old_log_probs = torch.FloatTensor([exp['log_prob'] for exp in self.memory])
+        # Convert memory to tensors - handle multi-agent structure
+        states = []
+        actions = []
+        rewards = []
+        old_log_probs = []
+        
+        for exp in self.memory:
+            # Handle both single agent and multi-agent observations
+            if isinstance(exp['state'], dict):
+                # If it's a dict, extract the observation for this agent
+                # We need to identify which agent this belongs to
+                agent_id = None
+                for key in exp['state']:
+                    if key.startswith('agent_'):
+                        agent_id = key
+                        break
+                
+                if agent_id and agent_id in exp['state']:
+                    state = exp['state'][agent_id]
+                else:
+                    # Fallback to first agent's observation
+                    state = list(exp['state'].values())[0]
+            else:
+                state = exp['state']
+            
+            states.append(state)
+            actions.append(exp['action'])
+            rewards.append(exp['reward'])
+            old_log_probs.append(exp['log_prob'])
+        
+        states = torch.FloatTensor(states)
+        actions = torch.LongTensor(actions)
+        rewards = torch.FloatTensor(rewards)
+        old_log_probs = torch.FloatTensor(old_log_probs)
         
         # Compute discounted rewards
         discounted_rewards = []
@@ -316,7 +356,7 @@ def main():
                     
                     for agent_id in ["agent_0", "agent_1", "agent_2"]:
                         if agent_id in obs:
-                            action, log_prob = agents[agent_id].select_action(obs[agent_id])
+                            action, log_prob = agents[agent_id].select_action(obs, agent_id)
                             actions[agent_id] = action
                             log_probs[agent_id] = log_prob
                     
@@ -332,8 +372,9 @@ def main():
                     # Store experience for our agents
                     for agent_id in ["agent_0", "agent_1", "agent_2"]:
                         if agent_id in rewards:
+                            # Store the full observation dict for context
                             agents[agent_id].memory.append({
-                                'state': obs[agent_id],
+                                'state': obs,  # Store full observation dict
                                 'action': actions[agent_id],
                                 'reward': rewards[agent_id],
                                 'log_prob': log_probs[agent_id]

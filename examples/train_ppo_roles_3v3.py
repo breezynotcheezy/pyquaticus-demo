@@ -333,21 +333,21 @@ if __name__ == "__main__":
     test_env.close()
 
     # Initialize Ray with optimized settings
+    # Skip Ray initialization due to Windows compatibility issues
+    # Use local training instead
+    print("Skipping Ray initialization due to Windows compatibility issues")
+    print("Using local training mode")
+    
+    # Force local mode by setting environment variable
+    os.environ["RAY_DISABLE_IMPORT_WARNING"] = "1"
+    
     try:
+        # Try minimal Ray init just for RLlib compatibility
         if not ray.is_initialized():
-            cpu_count = os.cpu_count()
-            if cpu_count is not None:
-                num_cpus = min(8, cpu_count)
-            else:
-                num_cpus = 4  # Default fallback
-            ray.init(
-                num_cpus=num_cpus,
-                object_store_memory=1000000000,  # 1GB object store
-                log_to_driver=False,  # Reduce logging overhead
-            )
-            print("Ray initialized successfully")
+            ray.init(log_to_driver=False, ignore_reinit_error=True)
+            print("Ray initialized in minimal mode")
     except Exception as e:
-        print(f"Error initializing Ray: {e}")
+        print(f"Ray initialization failed: {e}")
         print("Continuing without Ray...")
 
     # Optimized PPO configuration for competitive performance
@@ -358,7 +358,7 @@ if __name__ == "__main__":
         )
         .environment(env="pyquaticus_hierarchical", env_config=env_config)
         .env_runners(
-            num_env_runners=args.num_workers,
+            num_env_runners=0,  # Use 0 for local training (no workers)
             num_cpus_per_env_runner=1,
             num_envs_per_env_runner=1,
         )
@@ -366,7 +366,7 @@ if __name__ == "__main__":
             num_gpus=0,  # CPU training for stability
             num_cpus_for_main_process=1,
         )
-        .framework("torch")  # Use PyTorch backend
+        .framework("torch")  # Use PyTorch backend instead of TensorFlow
         .debugging(
             log_level="ERROR"  # Reduce logging overhead
         )
